@@ -25,17 +25,19 @@ impl Controller {
 
         Controller {
             client,
-            definitioner: Definitioner::new(config),
+            definitioner: Definitioner::new(),
         }
     }
 
     pub async fn handle_word_definition(&self, bot: Bot, msg: Message, word: &str) {
-        let definition = self.definitioner.get_word_definition(word).await;
-        bot.send_message(
-            msg.chat.id,
-            format!("{}: {}", definition.word, definition.definition),
-        )
-        .await
-        .unwrap();
+        if let Some(description) = self.definitioner.get_word_description(word).await {
+            bot.send_message(msg.chat.id, description.fmt())
+                .await
+                .unwrap();
+        } else {
+            bot.send_message(msg.chat.id, "word not found")
+                .await
+                .unwrap();
+        }
     }
 }

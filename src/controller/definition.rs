@@ -1,36 +1,61 @@
-use crate::config::Config;
-use reqwest::Client;
-
-pub struct Definition {
+pub struct WordDesciprion {
     pub word: String,
-    pub definition: String,
+    pub meanings: Vec<Meaning>,
 }
 
-pub struct Definitioner {
-    client: Client,
+impl WordDesciprion {
+    pub fn fmt(&self) -> String {
+        let mut result = format!("{}:\n\n", self.word);
+        for meaning in &self.meanings {
+            result.push_str(&format!("{}:\n", meaning.part_of_speech));
+            for (i, def) in meaning.definitions.iter().enumerate() {
+                result.push_str(&format!("{}. {}\n", i + 1, def));
+            }
+            result.push_str("\n")
+        }
+        result
+    }
 }
+
+pub struct Meaning {
+    pub part_of_speech: String,
+    pub definitions: Vec<String>,
+}
+
+pub struct Definitioner {}
 
 impl Definitioner {
-    pub fn new(config: &Config) -> Definitioner {
-        Definitioner {
-            client: Client::new(),
-        }
+    pub fn new() -> Definitioner {
+        Definitioner {}
     }
 
-    pub async fn get_word_definition(&self, word: &str) -> Definition {
+    pub async fn get_word_description(&self, word: &str) -> Option<WordDesciprion> {
         let url = format!("https://api.dictionaryapi.dev/api/v2/entries/en/{}", word);
         let response = reqwest::get(&url).await.unwrap();
-        let json = response.json::<serde_json::Value>().await.unwrap();
-        let definition = json[0]["meanings"][0]["definitions"][0]["definition"]
-            .as_str()
-            .unwrap_or_else(|| "No definition found");
-        // let example = json[0]["meanings"][0]["definitions"][0]["example"]
-        //     .as_str()
-        //     .unwrap();
-
-        Definition {
-            word: word.to_string(),
-            definition: definition.to_string(),
+        if response.status() == 404 {
+            return None;
         }
+
+        let mut desc = WordDesciprion {
+            word: word.to_owned(),
+            meanings: vec![],
+        };
+
+        let json = response.json::<serde_json::Value>().await.unwrap();
+        let meanings_json = json[0]["meanings"].as_array().unwrap();
+        for meaning_json in meanings_json {
+            let mut meaning = Meaning {
+                part_of_speech: meaning_json["partOfSpeech"].as_str().unwrap().to_string(),
+                definitions: vec![],
+            };
+            let definitions_json = meaning_json["definitions"].as_array().unwrap();
+            for def in definitions_json {
+                let def = def["definition"].as_str().unwrap();
+                meaning.definitions.push(def.to_owned());
+            }
+            desc.meanings.push(meaning);
+        }
+
+        Some(desc)
     }
 }
