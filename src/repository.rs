@@ -51,21 +51,6 @@ impl Repository {
             }
         }
 
-        // eprintln!("error: {}", e);
-        // match e {
-        //     SqlState(e) => match e.code() {
-        //         "23505" => {
-        //             eprintln!("user already exists");
-        //         }
-        //         _ => {
-        //             eprintln!("error: {}", e);
-        //         }
-        //     },
-        //     _ => {
-        //         eprintln!("error: {}", e);
-        //     }
-        // }
-
         default
     }
 }

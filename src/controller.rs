@@ -45,11 +45,20 @@ impl Controller {
         msg: Message,
         word: &str,
     ) -> Result<(), Box<dyn Error>> {
-        if let Some(description) = self.definitioner.get_word_description(word).await {
-            bot.send_message(msg.chat.id, description.fmt()).await?;
-        } else {
-            bot.send_message(msg.chat.id, "word not found").await?;
+        if let Some(word_description) = self.repo.get_word(word).await? {
+            bot.send_message(msg.chat.id, word_description.fmt())
+                .await?;
+            return Ok(());
         }
+
+        if let Some(word_description) = self.definitioner.get_word_description(word).await {
+            self.repo.insert_word(&word_description).await?;
+            bot.send_message(msg.chat.id, word_description.fmt())
+                .await?;
+            return Ok(());
+        }
+
+        bot.send_message(msg.chat.id, "word not found").await?;
 
         Ok(())
     }
