@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{error::Error, sync::Arc};
 
 use config::Config;
 use controller::Controller;
@@ -6,6 +6,9 @@ use teloxide::prelude::*;
 
 mod config;
 mod controller;
+mod repository;
+mod service;
+mod model;
 
 #[tokio::main]
 async fn main() {
@@ -17,13 +20,13 @@ async fn main() {
     let bot = Bot::new(&config.teloxide_token);
 
     teloxide::repl(bot, move |bot, msg| {
-        selector(bot, msg, Arc::clone(&controller))
+        handler(bot, msg, Arc::clone(&controller))
     })
     .await;
 }
 
-async fn selector(bot: Bot, msg: Message, controller: Arc<Controller>) -> ResponseResult<()> {
-    match msg
+async fn handler(bot: Bot, msg: Message, controller: Arc<Controller>) -> ResponseResult<()> {
+    let returned: Result<(), Box<dyn Error>> = match msg
         .text()
         .unwrap_or("/help ")
         .split(" ")
@@ -32,13 +35,16 @@ async fn selector(bot: Bot, msg: Message, controller: Arc<Controller>) -> Respon
         .to_lowercase()
         .as_str()
     {
-        "/start" => {
-            bot.send_message(msg.chat.id, "hello there!").await?;
-        }
-        word => {
-            controller.handle_word_definition(bot, msg, word).await;
-        }
+        "/start" => controller.handle_start(bot, msg).await,
+        word => controller.handle_word_definition(bot, msg, word).await,
     };
+
+    match returned {
+        Ok(_) => {}
+        Err(e) => {
+            eprintln!("error: {}", e);
+        }
+    }
 
     Ok(())
 }
