@@ -1,4 +1,4 @@
-use crate::config::Config;
+use crate::common::config::Config;
 use std::any::Any;
 use tokio_postgres::{Client, Error};
 

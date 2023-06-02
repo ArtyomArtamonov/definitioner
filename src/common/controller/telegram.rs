@@ -1,7 +1,7 @@
-use crate::config::Config;
-use crate::model::profile::Profile;
-use crate::repository::Repository;
-use crate::service::definition::Definitioner;
+use crate::common::model::profile::Profile;
+use crate::common::model::request;
+use crate::common::service::definitioner::Definitioner;
+use crate::common::service::DefinitionerService;
 use std::error::Error;
 use teloxide::prelude::*;
 
@@ -15,18 +15,12 @@ Available commands:
 "#;
 
 pub struct Controller {
-    repo: Repository,
-    definitioner: Definitioner,
+    service: Definitioner,
 }
 
 impl Controller {
-    pub async fn new(config: &Config) -> Controller {
-        let repo = Repository::new(&config).await;
-
-        Controller {
-            repo,
-            definitioner: Definitioner::new(),
-        }
+    pub async fn new(service: Definitioner) -> Controller {
+        Controller { service }
     }
 
     pub async fn handle_start(&self, bot: Bot, msg: Message) -> Result<(), Box<dyn Error>> {
@@ -38,7 +32,7 @@ impl Controller {
             name: username.unwrap_or("").to_string(),
         };
 
-        self.repo.insert_profile(&profile).await?;
+        self.service.start(request::Start { profile }).await?;
 
         bot.send_message(msg.chat.id, HELLO_MSG).await?;
 
@@ -46,6 +40,8 @@ impl Controller {
     }
 
     pub async fn handle_help(&self, bot: Bot, msg: Message) -> Result<(), Box<dyn Error>> {
+        self.service.help(request::Help {}).await?;
+
         bot.send_message(msg.chat.id, HELP_MSG).await?;
 
         Ok(())
@@ -57,20 +53,19 @@ impl Controller {
         msg: Message,
         word: &str,
     ) -> Result<(), Box<dyn Error>> {
-        if let Some(word_description) = self.repo.get_word(word).await? {
-            bot.send_message(msg.chat.id, word_description.fmt())
-                .await?;
+        if let Some(def) = self
+            .service
+            .word(request::WordDefinition {
+                word: word.to_owned(),
+            })
+            .await?
+            .description
+        {
+            bot.send_message(msg.chat.id, def.fmt()).await?;
             return Ok(());
         }
 
-        if let Some(word_description) = self.definitioner.get_word_description(word).await {
-            self.repo.insert_word(&word_description).await?;
-            bot.send_message(msg.chat.id, word_description.fmt())
-                .await?;
-            return Ok(());
-        }
-
-        bot.send_message(msg.chat.id, "word not found").await?;
+        bot.send_message(msg.chat.id, "Word not found").await?;
 
         Ok(())
     }

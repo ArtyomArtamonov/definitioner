@@ -1,22 +1,25 @@
-use std::{error::Error, sync::Arc};
+use std::{error::Error, process::exit, sync::Arc};
 
-use config::Config;
-use controller::Controller;
+use definitioner_bot::common::{
+    api, config::Config, controller::telegram::Controller, repository, service::definitioner,
+};
 use teloxide::prelude::*;
-
-mod config;
-mod controller;
-mod model;
-mod repository;
-mod service;
-mod handler;
 
 #[tokio::main]
 async fn main() {
+    ctrlc::set_handler(move || {
+        exit(130);
+    })
+    .unwrap();
+
     let config_filepath = "./config.toml";
 
     let config = Config::from_toml(config_filepath);
-    let controller = Arc::new(Controller::new(&config).await);
+    let dictionary = api::dictionary::Dictionary::new();
+
+    let repo = repository::Repository::new(&config).await;
+    let service = definitioner::Definitioner::new(repo, dictionary);
+    let controller = Arc::new(Controller::new(service).await);
 
     let bot = Bot::new(&config.teloxide_token);
 

@@ -1,5 +1,5 @@
 use super::Repository;
-use crate::model::profile::Profile;
+use crate::common::model::profile::Profile;
 
 use tokio_postgres::Error;
 

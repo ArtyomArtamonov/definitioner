@@ -1,9 +1,9 @@
-pub struct WordDesciprion {
+pub struct WordDescription {
     pub word: String,
     pub meanings: Vec<Meaning>,
 }
 
-impl WordDesciprion {
+impl WordDescription {
     pub fn fmt(&self) -> String {
         let mut result = format!("{}:\n\n", self.word);
         for meaning in &self.meanings {
@@ -22,21 +22,21 @@ pub struct Meaning {
     pub definitions: Vec<String>,
 }
 
-pub struct Definitioner {}
+pub struct Dictionary {}
 
-impl Definitioner {
-    pub fn new() -> Definitioner {
-        Definitioner {}
+impl Dictionary {
+    pub fn new() -> Dictionary {
+        Dictionary {}
     }
 
-    pub async fn get_word_description(&self, word: &str) -> Option<WordDesciprion> {
+    pub async fn get_word_description(&self, word: &str) -> Option<WordDescription> {
         let url = format!("https://api.dictionaryapi.dev/api/v2/entries/en/{}", word);
         let response = reqwest::get(&url).await.unwrap();
         if response.status() == 404 {
             return None;
         }
 
-        let mut desc = WordDesciprion {
+        let mut desc = WordDescription {
             word: word.to_owned(),
             meanings: vec![],
         };
