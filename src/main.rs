@@ -9,6 +9,7 @@ mod controller;
 mod model;
 mod repository;
 mod service;
+mod handler;
 
 #[tokio::main]
 async fn main() {
