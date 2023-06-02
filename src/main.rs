@@ -6,9 +6,9 @@ use teloxide::prelude::*;
 
 mod config;
 mod controller;
+mod model;
 mod repository;
 mod service;
-mod model;
 
 #[tokio::main]
 async fn main() {
@@ -36,6 +36,7 @@ async fn handler(bot: Bot, msg: Message, controller: Arc<Controller>) -> Respons
         .as_str()
     {
         "/start" => controller.handle_start(bot, msg).await,
+        "/help" => controller.handle_help(bot, msg).await,
         word => controller.handle_word_definition(bot, msg, word).await,
     };
 

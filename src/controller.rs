@@ -7,6 +7,12 @@ use teloxide::prelude::*;
 
 const HELLO_MSG: &str =
     "Hello! I'm a dictionary bot. Send me a word and I'll send you its definition.";
+const HELP_MSG: &str = r#"
+Available commands: 
+/start - start bot
+/help - show help
+{word} - show word definition
+"#;
 
 pub struct Controller {
     repo: Repository,
@@ -35,6 +41,12 @@ impl Controller {
         self.repo.insert_profile(&profile).await?;
 
         bot.send_message(msg.chat.id, HELLO_MSG).await?;
+
+        Ok(())
+    }
+
+    pub async fn handle_help(&self, bot: Bot, msg: Message) -> Result<(), Box<dyn Error>> {
+        bot.send_message(msg.chat.id, HELP_MSG).await?;
 
         Ok(())
     }
