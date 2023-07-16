@@ -3,6 +3,7 @@ use std::any::Any;
 use tokio_postgres::{Client, Error};
 
 mod profile;
+mod util;
 mod word;
 
 pub struct Repository {
@@ -31,26 +32,5 @@ impl Repository {
         });
 
         Self { client }
-    }
-
-    fn handle_already_exist_state<T>(&self, e: Error, default: T) -> T
-    where
-        T: Any,
-    {
-        match e.code() {
-            Some(code) => match code.code() {
-                "23505" => {
-                    eprintln!("user already exists");
-                }
-                _ => {
-                    eprintln!("error: {}", e);
-                }
-            },
-            None => {
-                eprintln!("error: {}", e);
-            }
-        }
-
-        default
     }
 }

@@ -1,4 +1,4 @@
-use super::Repository;
+use super::{util::handle_already_exist_state, Repository};
 use crate::common::model::profile::Profile;
 
 use tokio_postgres::Error;
@@ -11,7 +11,7 @@ impl Repository {
                 &[&profile.id, &profile.name],
             )
             .await
-            .unwrap_or_else(|e| self.handle_already_exist_state(e, 0));
+            .unwrap_or_else(|e| handle_already_exist_state(e, 0));
 
         Ok(())
     }
