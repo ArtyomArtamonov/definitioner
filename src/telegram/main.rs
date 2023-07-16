@@ -1,11 +1,8 @@
-use std::{error::Error, process::exit, sync::Arc};
+use std::{process::exit, sync::Arc};
 
 use definitioner_bot::common::controller::telegram;
 use definitioner_bot::common::{api, config::Config, repository, service::definitioner};
-use teloxide::{dispatching::dialogue::InMemStorage, prelude::*};
-
-type MyDialogue = Dialogue<State, InMemStorage<State>>;
-type HandlerResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
+use teloxide::prelude::*;
 
 #[derive(Clone, Default)]
 pub enum State {

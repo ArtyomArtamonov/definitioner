@@ -1,8 +1,6 @@
 use crate::common::model::profile::Profile;
 use crate::common::model::request;
 use crate::common::service::definitioner::Definitioner;
-use crate::common::service::DefinitionerService;
-use std::error::Error;
 use std::sync::Arc;
 
 use teloxide::prelude::*;
@@ -31,11 +29,20 @@ enum SimpleCommand {
 pub async fn run(bot: Bot, service: Arc<Definitioner>) {
     Dispatcher::builder(
         bot,
-        Update::filter_message().branch(
-            dptree::entry()
-                .filter_command::<SimpleCommand>()
-                .endpoint(handle_start),
-        ),
+        Update::filter_message()
+            .branch(
+                dptree::entry()
+                    .filter_command::<SimpleCommand>()
+                    .endpoint(handle_simple),
+            )
+            .branch(
+                dptree::filter(|msg: Message| {
+                    msg.text()
+                        .map(|text| !text.starts_with('/'))
+                        .unwrap_or_default()
+                })
+                .endpoint(handle_word_definition),
+            ),
     )
     .dependencies(dptree::deps![service.clone()])
     .enable_ctrlc_handler()
@@ -44,7 +51,19 @@ pub async fn run(bot: Bot, service: Arc<Definitioner>) {
     .await;
 }
 
-pub async fn handle_start(bot: Bot, msg: Message, service: Arc<Definitioner>) -> HandlerResult {
+async fn handle_simple(
+    bot: Bot,
+    msg: Message,
+    command: SimpleCommand,
+    service: Arc<Definitioner>,
+) -> HandlerResult {
+    match command {
+        SimpleCommand::Start => handle_start(bot, msg, service).await,
+        SimpleCommand::Help => handle_help(bot, msg, service).await,
+    }
+}
+
+async fn handle_start(bot: Bot, msg: Message, service: Arc<Definitioner>) -> HandlerResult {
     let chat_id = msg.chat.id.0;
     let username = msg.chat.username();
 
@@ -60,7 +79,7 @@ pub async fn handle_start(bot: Bot, msg: Message, service: Arc<Definitioner>) ->
     Ok(())
 }
 
-pub async fn handle_help(bot: Bot, msg: Message, service: Arc<Definitioner>) -> HandlerResult {
+async fn handle_help(bot: Bot, msg: Message, service: Arc<Definitioner>) -> HandlerResult {
     service.help(request::Help {}).await.unwrap();
 
     bot.send_message(msg.chat.id, HELP_MSG).await?;
@@ -68,23 +87,26 @@ pub async fn handle_help(bot: Bot, msg: Message, service: Arc<Definitioner>) -> 
     Ok(())
 }
 
-pub async fn handle_word_definition(
+async fn handle_word_definition(
     bot: Bot,
     msg: Message,
     service: Arc<Definitioner>,
-    word: String,
 ) -> HandlerResult {
+    let word = msg.text().unwrap().to_string();
+    let resulted_text: String;
+
     if let Some(def) = service
         .word(request::WordDefinition { word: word })
         .await
         .unwrap()
         .description
     {
-        bot.send_message(msg.chat.id, def.fmt()).await?;
-        return Ok(());
+        resulted_text = def.fmt();
+    } else {
+        resulted_text = "No definition found".to_string();
     }
 
-    bot.send_message(msg.chat.id, "Word not found").await?;
+    bot.send_message(msg.chat.id, resulted_text).await?;
 
     Ok(())
 }

@@ -2,7 +2,6 @@ use std::error::Error;
 
 use crate::common::{api::dictionary, repository::Repository};
 
-use super::DefinitionerService;
 use crate::common::model::{request, response};
 
 pub struct Definitioner {
@@ -17,26 +16,25 @@ impl Definitioner {
             dictionary_api,
         }
     }
-}
 
-#[async_trait::async_trait]
-impl DefinitionerService for Definitioner {
-    async fn start(&self, request: request::Start) -> Result<response::Start, Box<dyn Error>> {
+    pub async fn start(&self, request: request::Start) -> Result<response::Start, Box<dyn Error>> {
         self.repo.insert_profile(&request.profile).await?;
 
         Ok(response::Start {})
     }
 
-    async fn help(&self, _request: request::Help) -> Result<response::Help, Box<dyn Error>> {
+    pub async fn help(&self, _request: request::Help) -> Result<response::Help, Box<dyn Error>> {
         Ok(response::Help {})
     }
 
-    async fn word(
+    pub async fn word(
         &self,
         request: request::WordDefinition,
     ) -> Result<response::WordDefinition, Box<dyn Error>> {
         if let Some(word_description) = self.repo.get_word(&request.word).await? {
-            todo!("return word definition")
+            return Ok(response::WordDefinition {
+                description: Some(word_description),
+            });
         }
 
         if let Some(word_description) = self
@@ -45,6 +43,10 @@ impl DefinitionerService for Definitioner {
             .await
         {
             self.repo.insert_word(&word_description).await?;
+
+            return Ok(response::WordDefinition {
+                description: Some(word_description),
+            });
         }
 
         Ok(response::WordDefinition { description: None })
