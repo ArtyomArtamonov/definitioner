@@ -4,8 +4,9 @@ use crate::common::service::definitioner::Definitioner;
 use crate::common::service::DefinitionerService;
 use std::error::Error;
 use std::sync::Arc;
-use teloxide::dispatching::dialogue::InMemStorage;
+
 use teloxide::prelude::*;
+use teloxide::utils::command::BotCommands;
 
 const HELLO_MSG: &str =
     "Hello! I'm a dictionary bot. Send me a word and I'll send you its definition.";
@@ -16,35 +17,34 @@ Available commands:
 {word} - show word definition
 "#;
 
-type MyDialogue = Dialogue<State, InMemStorage<State>>;
 type HandlerResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
 
-#[derive(Clone, Default)]
-pub enum State {
-    #[default]
+#[derive(BotCommands, Clone)]
+#[command(rename_rule = "lowercase", description = "Default commands")]
+enum SimpleCommand {
+    #[command(description = "shows start message")]
     Start,
+    #[command(description = "shows help message")]
+    Help,
 }
 
 pub async fn run(bot: Bot, service: Arc<Definitioner>) {
     Dispatcher::builder(
         bot,
-        Update::filter_message()
-            .enter_dialogue::<Message, InMemStorage<State>, State>()
-            .branch(dptree::case![State::Start].endpoint(handle_start)),
+        Update::filter_message().branch(
+            dptree::entry()
+                .filter_command::<SimpleCommand>()
+                .endpoint(handle_start),
+        ),
     )
-    .dependencies(dptree::deps![InMemStorage::<State>::new(), service.clone()])
+    .dependencies(dptree::deps![service.clone()])
     .enable_ctrlc_handler()
     .build()
     .dispatch()
     .await;
 }
 
-pub async fn handle_start(
-    bot: Bot,
-    msg: Message,
-    dialogue: MyDialogue,
-    service: Arc<Definitioner>,
-) -> HandlerResult {
+pub async fn handle_start(bot: Bot, msg: Message, service: Arc<Definitioner>) -> HandlerResult {
     let chat_id = msg.chat.id.0;
     let username = msg.chat.username();
 
@@ -60,12 +60,7 @@ pub async fn handle_start(
     Ok(())
 }
 
-pub async fn handle_help(
-    bot: Bot,
-    msg: Message,
-    dialogue: MyDialogue,
-    service: Arc<Definitioner>,
-) -> HandlerResult {
+pub async fn handle_help(bot: Bot, msg: Message, service: Arc<Definitioner>) -> HandlerResult {
     service.help(request::Help {}).await.unwrap();
 
     bot.send_message(msg.chat.id, HELP_MSG).await?;
@@ -76,14 +71,11 @@ pub async fn handle_help(
 pub async fn handle_word_definition(
     bot: Bot,
     msg: Message,
-    dialogue: MyDialogue,
     service: Arc<Definitioner>,
-    word: &str,
+    word: String,
 ) -> HandlerResult {
     if let Some(def) = service
-        .word(request::WordDefinition {
-            word: word.to_owned(),
-        })
+        .word(request::WordDefinition { word: word })
         .await
         .unwrap()
         .description
